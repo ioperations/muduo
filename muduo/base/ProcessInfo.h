@@ -48,6 +48,7 @@ namespace ProcessInfo
   int openedFiles();
   int maxOpenFiles();
 
+  /// count cpu consuming time since process start
   struct CpuTime
   {
     double userSeconds;

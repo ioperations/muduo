@@ -14,48 +14,54 @@
 #include <pwd.h>
 #include <stdio.h> // snprintf
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/resource.h>
 #include <sys/times.h>
+#include <unistd.h>
 
-namespace muduo
-{
-namespace detail
-{
-__thread int t_numOpenedFiles = 0;
-int fdDirFilter(const struct dirent* d)
-{
-  if (::isdigit(d->d_name[0]))
+namespace muduo {
+namespace detail {
+  __thread int t_numOpenedFiles = 0;
+  int fdDirFilter(const struct dirent* d)
   {
-    ++t_numOpenedFiles;
+    if (::isdigit(d->d_name[0])) {
+      ++t_numOpenedFiles;
+    }
+    return 0;
   }
-  return 0;
-}
 
-__thread std::vector<pid_t>* t_pids = NULL;
-int taskDirFilter(const struct dirent* d)
-{
-  if (::isdigit(d->d_name[0]))
+  __thread std::vector<pid_t>* t_pids = NULL;
+  int taskDirFilter(const struct dirent* d)
   {
-    t_pids->push_back(atoi(d->d_name));
+    if (::isdigit(d->d_name[0])) {
+      t_pids->push_back(atoi(d->d_name));
+    }
+    return 0;
   }
-  return 0;
-}
 
-int scanDir(const char *dirpath, int (*filter)(const struct dirent *))
-{
-  struct dirent** namelist = NULL;
-  int result = ::scandir(dirpath, &namelist, filter, alphasort);
-  assert(namelist == NULL);
-  return result;
-}
+  /// scanDir should ensure that the global call ::scandir nerver perform
+  /// a malloc
+  int scanDir(const char* dirpath, int (*filter)(const struct dirent*))
+  {
+    struct dirent** namelist = NULL;
+    int result = ::scandir(dirpath, &namelist, filter, alphasort);
+    /// gracefully exit when logic not satisfied
+    {
+      int n = result;
+      while (n--) {
+        free(namelist[n]);
+      }
+      free(namelist);
+    }
+    assert(namelist == NULL);
+    return result;
+  }
 
-Timestamp g_startTime = Timestamp::now();
-// assume those won't change during the life time of a process.
-int g_clockTicks = static_cast<int>(::sysconf(_SC_CLK_TCK));
-int g_pageSize = static_cast<int>(::sysconf(_SC_PAGE_SIZE));
-}  // namespace detail
-}  // namespace muduo
+  Timestamp g_startTime = Timestamp::now();
+  // assume those won't change during the life time of a process.
+  int g_clockTicks = static_cast<int>(::sysconf(_SC_CLK_TCK));
+  int g_pageSize = static_cast<int>(::sysconf(_SC_PAGE_SIZE));
+} // namespace detail
+} // namespace muduo
 
 using namespace muduo;
 using namespace muduo::detail;
@@ -85,8 +91,7 @@ string ProcessInfo::username()
   const char* name = "unknownuser";
 
   getpwuid_r(uid(), &pwd, buf, sizeof buf, &result);
-  if (result)
-  {
+  if (result) {
     name = pwd.pw_name;
   }
   return name;
@@ -126,13 +131,10 @@ string ProcessInfo::hostname()
   // HOST_NAME_MAX 64
   // _POSIX_HOST_NAME_MAX 255
   char buf[256];
-  if (::gethostname(buf, sizeof buf) == 0)
-  {
-    buf[sizeof(buf)-1] = '\0';
+  if (::gethostname(buf, sizeof buf) == 0) {
+    buf[sizeof(buf) - 1] = '\0';
     return buf;
-  }
-  else
-  {
+  } else {
     return "unknownhost";
   }
 }
@@ -147,9 +149,8 @@ StringPiece ProcessInfo::procname(const string& stat)
   StringPiece name;
   size_t lp = stat.find('(');
   size_t rp = stat.rfind(')');
-  if (lp != string::npos && rp != string::npos && lp < rp)
-  {
-    name.set(stat.data()+lp+1, static_cast<int>(rp-lp-1));
+  if (lp != string::npos && rp != string::npos && lp < rp) {
+    name.set(stat.data() + lp + 1, static_cast<int>(rp - lp - 1));
   }
   return name;
 }
@@ -182,13 +183,19 @@ string ProcessInfo::exePath()
   string result;
   char buf[1024];
   ssize_t n = ::readlink("/proc/self/exe", buf, sizeof buf);
-  if (n > 0)
-  {
+  if (n > 0) {
+#if __cplusplus
+    result.assign(buf, static_cast<unsigned long >(n));
+#else
     result.assign(buf, n);
+#endif
   }
   return result;
 }
 
+/// NOTE: what the funtion it performs
+/// why not assign the sacnDir return value to t_numOpenedFiles
+/// muduo/base/ProcessInfo.cc +192
 int ProcessInfo::openedFiles()
 {
   t_numOpenedFiles = 0;
@@ -199,12 +206,9 @@ int ProcessInfo::openedFiles()
 int ProcessInfo::maxOpenFiles()
 {
   struct rlimit rl;
-  if (::getrlimit(RLIMIT_NOFILE, &rl))
-  {
+  if (::getrlimit(RLIMIT_NOFILE, &rl)) {
     return openedFiles();
-  }
-  else
-  {
+  } else {
     return static_cast<int>(rl.rlim_cur);
   }
 }
@@ -213,8 +217,7 @@ ProcessInfo::CpuTime ProcessInfo::cpuTime()
 {
   ProcessInfo::CpuTime t;
   struct tms tms;
-  if (::times(&tms) >= 0)
-  {
+  if (::times(&tms) >= 0) {
     const double hz = static_cast<double>(clockTicksPerSecond());
     t.userSeconds = static_cast<double>(tms.tms_utime) / hz;
     t.systemSeconds = static_cast<double>(tms.tms_stime) / hz;
@@ -227,8 +230,7 @@ int ProcessInfo::numThreads()
   int result = 0;
   string status = procStatus();
   size_t pos = status.find("Threads:");
-  if (pos != string::npos)
-  {
+  if (pos != string::npos) {
     result = ::atoi(status.c_str() + pos + 8);
   }
   return result;
@@ -243,4 +245,3 @@ std::vector<pid_t> ProcessInfo::threads()
   std::sort(result.begin(), result.end());
   return result;
 }
-

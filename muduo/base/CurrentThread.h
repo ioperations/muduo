@@ -8,10 +8,8 @@
 
 #include "muduo/base/Types.h"
 
-namespace muduo
-{
-namespace CurrentThread
-{
+namespace muduo {
+namespace CurrentThread {
   // internal
   extern __thread int t_cachedTid;
   extern __thread char t_tidString[32];
@@ -21,8 +19,7 @@ namespace CurrentThread
 
   inline int tid()
   {
-    if (__builtin_expect(t_cachedTid == 0, 0))
-    {
+    if (__builtin_expect(t_cachedTid == 0, 0)) {
       cacheTid();
     }
     return t_cachedTid;
@@ -45,10 +42,10 @@ namespace CurrentThread
 
   bool isMainThread();
 
-  void sleepUsec(int64_t usec);  // for testing
+  void sleepUsec(int64_t usec); // for testing
 
   string stackTrace(bool demangle);
-}  // namespace CurrentThread
-}  // namespace muduo
+} // namespace CurrentThread
+} // namespace muduo
 
-#endif  // MUDUO_BASE_CURRENTTHREAD_H
+#endif // MUDUO_BASE_CURRENTTHREAD_H

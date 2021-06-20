@@ -70,6 +70,7 @@ class FixedBuffer : noncopyable
   static void cookieStart();
   static void cookieEnd();
 
+  /// hook
   void (*cookie_)();
   char data_[SIZE];
   char* cur_;
