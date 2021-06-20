@@ -1,0 +1,21 @@
+name : build and test
+
+on: push
+
+
+jobs:
+    build:
+        name: Buils on ${{ matrix.container }}
+        runs-on: ubuntu-latest
+        steps:
+        - id: step0
+          name: CHeckout code
+          uses: actions/checkout@v2
+        - id: fetch_build_tools
+          run: |
+              sudo apt install cmake build-essential -y
+        - id: build
+          run: |
+              ./build.sh
+
+
