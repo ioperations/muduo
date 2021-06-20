@@ -17,6 +17,6 @@ jobs:
         - id: build
           run: |
               ./build.sh -j4
-        - id: build
+        - id: build_test
           run: |
               ./build.sh test
