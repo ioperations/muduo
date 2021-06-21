@@ -22,8 +22,10 @@ jobs:
           run: |
               sudo apt install cmake build-essential -y libboost-all-dev ${{ matrix.compiler }}
         - id: build
+          if: startsWith(matrix.compiler, 'clang')
           run: |
-              ./build.sh -j`nproc`
-        - id: build_test
-          run: |
+              CXX=clang++ ./build.sh -j`nproc`
               ./build.sh test
+        - id: build_test
+          if: startsWith(matrix.compiler, 'g++')
+          run: |
