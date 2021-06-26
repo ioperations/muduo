@@ -1,0 +1,17 @@
+image: ubuntu:focal
+
+branches:
+    test:
+        - master
+        - main
+
+before_install:
+    - apt-get update -y
+
+install:
+    - DEBIAN_FRONTEND="noninteractive" apt-get install -y build-essential cmake libboost-all-dev
+
+script:
+    - ./build.sh -j`nproc`; ./build.sh test
+
+    
